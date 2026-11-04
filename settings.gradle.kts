@@ -1,1 +1,1 @@
-rootProject.name = "claude-cli-gui"
+rootProject.name = "aichat-claude-cli-native"

@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.nowtech"
-version = "1.1.3"
+version = "1.0.2"
 
 kotlin {
   jvmToolchain(21)
@@ -23,15 +23,12 @@ repositories {
 dependencies {
   intellijPlatform {
     local(phpstormHome)
-    bundledPlugin("org.jetbrains.plugins.terminal")
   }
 
   val phpstormLib = file(phpstormHome).resolve("lib")
   compileOnly(
     files(
       phpstormLib.resolve("intellij.platform.ide.impl.jar"),
-      phpstormLib.resolve("intellij.platform.projectModel.impl.jar"),
-      phpstormLib.resolve("intellij.platform.vcs.impl.jar"),
     ),
   )
 
@@ -40,8 +37,8 @@ dependencies {
 
 intellijPlatform {
   pluginConfiguration {
-    id = "dev.nowtech.claude.cli.gui"
-    name = "Claude CLI"
+    id = "dev.nowtech.aichat.claudecli.native"
+    name = "Ai Chat Claude CLI Native"
     version = project.version.toString()
     ideaVersion {
       sinceBuild = "262.10968"
@@ -49,7 +46,7 @@ intellijPlatform {
     }
     vendor {
       name = "NOW Tech"
-      url = "https://nowtech.dev"
+      url = "https://jetbrains.nowtech.dev"
     }
   }
 }
@@ -58,7 +55,6 @@ tasks {
   buildSearchableOptions {
     enabled = false
   }
-  // Instrumentation scans every platform class — very slow on WSL + /mnt/c/.
   named("instrumentCode") { enabled = false }
   named("instrumentTestCode") { enabled = false }
   withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
