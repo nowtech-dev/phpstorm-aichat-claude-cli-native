@@ -236,7 +236,13 @@ class SessionPanel(
         val monoFont = settings.chatFont()
         val inputFont = settings.inputFont()
         val smallFont = monoFont.deriveFont(11f)
-        val fontFamilyCss = cssFontFamily(settings.chatFontFamily())
+        val bodyFontFamily =
+            if (state.appearanceThemeMode == com.claudecode.ClaudeConstants.THEME_FOLLOW_IDE) {
+                com.intellij.util.ui.UIUtil.getLabelFont().family
+            } else {
+                settings.chatFontFamily()
+            }
+        val fontFamilyCss = cssFontFamily(bodyFontFamily)
 
         outputPane = JTextPane().apply {
             isEditable = false
@@ -1432,7 +1438,7 @@ class SessionPanel(
                     palette,
                     filePath!!,
                     "Edit",
-                    meta.ifBlank { null },
+                    meta?.takeIf { it.isNotBlank() },
                     elementId,
                     if (diffData != null) "http://localhost/action/inline-diff/$consolidatedDiffId" else null,
                   ),
