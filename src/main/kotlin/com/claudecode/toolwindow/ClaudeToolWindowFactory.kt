@@ -1,0 +1,325 @@
+package com.claudecode.toolwindow
+
+import com.claudecode.session.ClaudeSession
+import com.claudecode.session.SessionManager
+import com.claudecode.session.SessionManagerListener
+import com.claudecode.ui.SessionPanel
+import com.claudecode.ui.WelcomePanel
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.project.DumbAware
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.wm.ToolWindow
+import com.intellij.openapi.wm.ToolWindowFactory
+import com.intellij.openapi.wm.ex.ToolWindowManagerListener
+import com.intellij.ui.content.Content
+import com.intellij.ui.content.ContentFactory
+import com.intellij.ui.content.ContentManagerEvent
+import com.intellij.ui.content.ContentManagerListener
+import javax.swing.SwingUtilities
+
+class ClaudeToolWindowFactory : ToolWindowFactory, DumbAware {
+
+    override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
+        val manager = ClaudeToolWindowManager(project, toolWindow)
+        Disposer.register(toolWindow.disposable, manager)
+    }
+}
+
+class ClaudeToolWindowManager(
+    private val project: Project,
+    private val toolWindow: ToolWindow
+) : Disposable, SessionManagerListener {
+
+    private val sessionManager = SessionManager.getInstance(project)
+    private val sessionPanels = mutableMapOf<String, SessionPanel>()
+    private val contentToSession = mutableMapOf<Content, ClaudeSession>()
+    private var welcomeContent: Content? = null
+
+    init {
+        sessionManager.addListener(this)
+        setupToolbar()
+        subscribeToAppearanceChanges()
+
+        project.messageBus.connect(this).subscribe(
+            ToolWindowManagerListener.TOPIC,
+            object : ToolWindowManagerListener {
+                override fun toolWindowShown(tw: ToolWindow) {
+                    if (tw == toolWindow) {
+                        SwingUtilities.invokeLater {
+                            val panel = toolWindow.contentManager.selectedContent?.component as? SessionPanel
+                            panel?.focusInput()
+                        }
+                    }
+                }
+            }
+        )
+
+        // Handle tab close
+        toolWindow.contentManager.addContentManagerListener(object : ContentManagerListener {
+            override fun contentRemoved(event: ContentManagerEvent) {
+                if (event.content == welcomeContent) {
+                    welcomeContent = null
+                    return
+                }
+                val session = contentToSession.remove(event.content)
+                if (session != null) {
+                    sessionPanels.remove(session.id)?.dispose()
+                    sessionManager.removeSession(session)
+                }
+                // Show welcome panel when all sessions are closed
+                if (contentToSession.isEmpty()) {
+                    showWelcome()
+                }
+            }
+        })
+
+        showWelcome()
+    }
+
+    /**
+     * Live theme reload. Subscribes (app-level, disposed with this tool window) to:
+     *  - IDE Look-and-Feel changes and editor-color-scheme changes → re-theme only
+     *    when the plugin is in "Follow IDE" mode (Dark/Light presets are pinned).
+     *  - the plugin's own Appearance settings change → always re-theme.
+     */
+    private fun subscribeToAppearanceChanges() {
+        val conn = com.intellij.openapi.application.ApplicationManager.getApplication()
+            .messageBus.connect(this)
+        conn.subscribe(
+            com.intellij.ide.ui.LafManagerListener.TOPIC,
+            com.intellij.ide.ui.LafManagerListener { reapplyThemeToAll(onlyWhenFollowingIde = true) }
+        )
+        conn.subscribe(
+            com.intellij.openapi.editor.colors.EditorColorsManager.TOPIC,
+            com.intellij.openapi.editor.colors.EditorColorsListener { reapplyThemeToAll(onlyWhenFollowingIde = true) }
+        )
+        conn.subscribe(
+            com.claudecode.settings.ClaudeAppearanceListener.TOPIC,
+            object : com.claudecode.settings.ClaudeAppearanceListener {
+                override fun appearanceChanged() = reapplyThemeToAll(onlyWhenFollowingIde = false)
+            }
+        )
+    }
+
+    private fun reapplyThemeToAll(onlyWhenFollowingIde: Boolean) {
+        if (onlyWhenFollowingIde &&
+            com.claudecode.settings.ClaudeSettings.getInstance().state.appearanceThemeMode !=
+            com.claudecode.ClaudeConstants.THEME_FOLLOW_IDE
+        ) return
+        // LAF listeners can fire before the new UI defaults are fully installed;
+        // defer so palette derivation reads the post-switch colors.
+        SwingUtilities.invokeLater {
+            sessionPanels.values.forEach { runCatching { it.reapplyTheme() } }
+            (welcomeContent?.component as? WelcomePanel)?.let { runCatching { it.reapplyTheme() } }
+        }
+    }
+
+    private fun showWelcome() {
+        if (welcomeContent != null) return
+        val panel = WelcomePanel { createSessionWithCheck() }
+        welcomeContent = ContentFactory.getInstance().createContent(
+            panel, "Welcome", false
+        ).apply { isCloseable = false }
+        toolWindow.contentManager.addContent(welcomeContent!!)
+    }
+
+    private fun removeWelcome() {
+        welcomeContent?.let {
+            toolWindow.contentManager.removeContent(it, true)
+            welcomeContent = null
+        }
+    }
+
+    private fun setupToolbar() {
+        val actionGroup = com.intellij.openapi.actionSystem.DefaultActionGroup().apply {
+            add(object : com.intellij.openapi.actionSystem.AnAction(
+                "New Session",
+                "Start a new Claude Code session",
+                com.intellij.icons.AllIcons.General.Add
+            ) {
+                override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
+                    createSessionWithCheck()
+                }
+            })
+            add(object : com.intellij.openapi.actionSystem.AnAction(
+                "Close Session",
+                "Close the current Claude Code session",
+                com.intellij.icons.AllIcons.Actions.Close
+            ) {
+                override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
+                    val content = toolWindow.contentManager.selectedContent ?: return
+                    if (content == welcomeContent) return
+                    toolWindow.contentManager.removeContent(content, true)
+                }
+
+                override fun update(e: com.intellij.openapi.actionSystem.AnActionEvent) {
+                    val content = toolWindow.contentManager.selectedContent
+                    e.presentation.isEnabled = content != null && content != welcomeContent
+                }
+
+                override fun getActionUpdateThread() =
+                    com.intellij.openapi.actionSystem.ActionUpdateThread.EDT
+            })
+            add(object : com.intellij.openapi.actionSystem.AnAction(
+                "Rename Session",
+                "Rename the current session tab",
+                com.intellij.icons.AllIcons.Actions.Edit
+            ) {
+                override fun actionPerformed(e: com.intellij.openapi.actionSystem.AnActionEvent) {
+                    val content = toolWindow.contentManager.selectedContent ?: return
+                    val currentName = content.displayName
+                    val newName = Messages.showInputDialog(
+                        project,
+                        "Enter new session name:",
+                        "Rename Session",
+                        null,
+                        currentName,
+                        null
+                    )
+                    if (!newName.isNullOrBlank()) {
+                        content.displayName = newName
+                        val s = contentToSession[content]
+                        if (s != null) sessionPanels[s.id]?.updateDisplayName(newName)
+                    }
+                }
+
+                override fun update(e: com.intellij.openapi.actionSystem.AnActionEvent) {
+                    val content = toolWindow.contentManager.selectedContent
+                    e.presentation.isEnabled = content != null && content != welcomeContent
+                }
+
+                override fun getActionUpdateThread() =
+                    com.intellij.openapi.actionSystem.ActionUpdateThread.EDT
+            })
+            add(com.claudecode.ui.RecentSessionsAction(project))
+            add(com.claudecode.ui.ExportChatAction(project))
+            add(com.claudecode.mcp.McpServersAction(project))
+            add(com.claudecode.config.ClaudeSettingsFileAction(project))
+        }
+        toolWindow.setTitleActions(actionGroup.getChildActionsOrStubs().toList())
+        // Drop entries past their 30-day TTL once per tool-window open.
+        // Cheap, runs on a pool thread inside the store.
+        com.claudecode.history.RecentSessionsStore.pruneOld()
+    }
+
+    override fun onSessionAdded(session: ClaudeSession) {
+        removeWelcome()
+
+        val panel = SessionPanel(project, session) { newName ->
+            updateTabName(session, newName)
+        }
+        sessionPanels[session.id] = panel
+
+        val content = ContentFactory.getInstance().createContent(
+            panel,
+            session.name,
+            false
+        ).apply {
+            isCloseable = true
+            tabName = session.name
+        }
+
+        contentToSession[content] = session
+        toolWindow.contentManager.addContent(content)
+        toolWindow.contentManager.setSelectedContent(content)
+        panel.focusInput()
+    }
+
+    override fun onSessionRemoved(session: ClaudeSession) {
+        // Handled by contentRemoved listener
+    }
+
+    fun updateTabName(session: ClaudeSession, name: String) {
+        for ((content, s) in contentToSession) {
+            if (s.id == session.id) {
+                content.displayName = name
+                break
+            }
+        }
+    }
+
+    private fun createSessionWithCheck() {
+        val session = sessionManager.createSession()
+        if (session == null) {
+            Messages.showWarningDialog(
+                project,
+                "Maximum number of sessions reached. Close an existing session first, or increase the limit in Settings → Tools → Claude Code.",
+                com.claudecode.ClaudeConstants.TOOL_WINDOW_ID
+            )
+        }
+    }
+
+    override fun dispose() {
+        sessionManager.removeListener(this)
+        sessionPanels.values.forEach { it.dispose() }
+        sessionPanels.clear()
+        contentToSession.clear()
+    }
+}
+
+fun sendToClaudeToolWindow(project: Project, message: String) {
+    val toolWindowManager = com.intellij.openapi.wm.ToolWindowManager.getInstance(project)
+    val toolWindow = toolWindowManager.getToolWindow(com.claudecode.ClaudeConstants.TOOL_WINDOW_ID) ?: return
+
+    toolWindow.activate {
+        val content = toolWindow.contentManager.selectedContent
+        val panel = content?.component as? SessionPanel
+
+        if (panel != null && !panel.isBusy()) {
+            panel.sendPrefilled(message)
+        } else {
+            val session = SessionManager.getInstance(project).createSession()
+            if (session != null) {
+                SwingUtilities.invokeLater {
+                    val newContent = toolWindow.contentManager.selectedContent
+                    val newPanel = newContent?.component as? SessionPanel
+                    newPanel?.sendPrefilled(message)
+                }
+            }
+        }
+    }
+}
+
+fun openClaudeSessionInDirectory(project: Project, dirPath: String, dirName: String) {
+    val toolWindowManager = com.intellij.openapi.wm.ToolWindowManager.getInstance(project)
+    val toolWindow = toolWindowManager.getToolWindow(com.claudecode.ClaudeConstants.TOOL_WINDOW_ID) ?: return
+
+    toolWindow.activate {
+        val session = SessionManager.getInstance(project).createSession(
+            name = dirName,
+            workDir = dirPath
+        )
+        if (session == null) {
+            Messages.showWarningDialog(
+                project,
+                "Maximum number of sessions reached. Close an existing session first.",
+                com.claudecode.ClaudeConstants.TOOL_WINDOW_ID
+            )
+        }
+    }
+}
+
+fun sendContextToClaudeToolWindow(project: Project, context: String) {
+    val toolWindowManager = com.intellij.openapi.wm.ToolWindowManager.getInstance(project)
+    val toolWindow = toolWindowManager.getToolWindow(com.claudecode.ClaudeConstants.TOOL_WINDOW_ID) ?: return
+
+    toolWindow.activate {
+        val content = toolWindow.contentManager.selectedContent
+        val panel = content?.component as? SessionPanel
+
+        if (panel != null) {
+            panel.prefillInput(context)
+        } else {
+            val session = SessionManager.getInstance(project).createSession()
+            if (session != null) {
+                SwingUtilities.invokeLater {
+                    val newContent = toolWindow.contentManager.selectedContent
+                    val newPanel = newContent?.component as? SessionPanel
+                    newPanel?.prefillInput(context)
+                }
+            }
+        }
+    }
+}
