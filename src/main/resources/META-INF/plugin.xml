@@ -1,12 +1,12 @@
 <idea-plugin>
   <id>dev.nowtech.aichat.claudecli.native</id>
   <name>AI Chat Claude CLI Native</name>
-  <vendor url="https://jetbrains.nowtech.dev">NOW Tech</vendor>
+  <vendor url="https://phpstorm.nowtech.dev">NOW Tech</vendor>
   <description><![CDATA[
     Installs the <b>Claude CLI</b> agent for JetBrains <b>AI Chat</b> (ACP), so you can use
     <b>Claude Code Teams</b> with the same <code>claude</code> login as in the terminal — not the
     JetBrains-hosted Claude API key flow.<br/><br/>
-    <a href="https://jetbrains.nowtech.dev"><font color="#589DF6">jetbrains.nowtech.dev</font></a>
+    <a href="https://phpstorm.nowtech.dev"><font color="#589DF6">phpstorm.nowtech.dev</font></a>
   ]]></description>
 
   <depends>com.intellij.modules.platform</depends>

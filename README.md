@@ -7,7 +7,7 @@
 JetBrains IDE plugin that **installs the Claude CLI agent** for **AI Chat** (ACP), so you can use **Claude Code Teams** with your existing terminal `claude` login — the same way as Cursor/Junie agents, without the JetBrains API-key Claude flow.
 
 **Plugin ID:** `dev.nowtech.aichat.claudecli.native`  
-**Vendor:** [NOW Tech](https://jetbrains.nowtech.dev)
+**Vendor:** [NOW Tech](https://phpstorm.nowtech.dev)
 
 ## Requirements
 
@@ -63,6 +63,10 @@ cp -a ../aichat-auto-apply/.intellijPlatform .
 
 ## Install
 
+### JetBrains Marketplace
+
+[![Install to JetBrains IDE(s)](https://img.shields.io/badge/JetBrains_Marketplace-Install-000000?style=for-the-badge&logo=jetbrains)](https://plugins.jetbrains.com/plugin/35808-ai-chat-claude-cli-native)
+
 ### Install from disk (development build)
 
 1. **Settings → Plugins → ⚙ → Install Plugin from Disk…** → select the ZIP from `./builder build`
@@ -91,4 +95,4 @@ Uses JetBrains platform and AI Assistant APIs. May require updates when the IDE 
 
 ## License
 
-[MIT](LICENSE) © [NOW Tech](https://jetbrains.nowtech.dev)
+[MIT](LICENSE) © [NOW Tech](https://phpstorm.nowtech.dev)
