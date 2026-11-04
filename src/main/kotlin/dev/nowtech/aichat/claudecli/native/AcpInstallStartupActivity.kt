@@ -9,13 +9,13 @@ class AcpInstallStartupActivity : StartupActivity {
   private val LOG = logger<AcpInstallStartupActivity>()
 
   override fun runActivity(project: Project) {
-    if (!AcpInstaller.needsInstall()) return
+    if (!AcpInstaller.needsInstall(project)) return
     synchronized(InstallGate) {
       if (InstallGate.done) return
       InstallGate.done = true
     }
     LOG.info("AI Chat Claude CLI Native: scheduling ACP install")
-    AcpInstaller.installWithNotification(showSuccess = false)
+    AcpInstaller.installWithNotification(project = project, showSuccess = false)
   }
 
   private object InstallGate {

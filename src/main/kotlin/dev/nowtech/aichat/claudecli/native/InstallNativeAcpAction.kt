@@ -6,6 +6,6 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 class InstallNativeAcpAction : AnAction() {
 
   override fun actionPerformed(e: AnActionEvent) {
-    AcpInstaller.installWithNotification(showSuccess = true)
+    AcpInstaller.installWithNotification(project = e.project, showSuccess = true)
   }
 }

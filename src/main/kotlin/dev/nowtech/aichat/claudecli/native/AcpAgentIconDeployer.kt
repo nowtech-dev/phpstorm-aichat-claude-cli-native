@@ -7,9 +7,8 @@ import java.nio.file.Path
 import java.util.Locale
 
 /**
- * JetBrains does not document icons in [acp.json] (see LLM-27862). For custom agents the IDE
- * falls back to a generic robot icon unless it finds icons under
- * `{system}/acp-agents/.icons/{sanitized-name}.svg` or `.png` (and optional `{name}_dark.*`).
+ * JetBrains does not document icons in [acp.json] (see LLM-27862). Custom agents use a generic
+ * robot icon unless `{system}/acp-agents/.icons/{sanitized-name}.svg` exists (PNG is ignored).
  */
 object AcpAgentIconDeployer {
 
@@ -19,10 +18,13 @@ object AcpAgentIconDeployer {
     val slug = sanitizeAgentSlug(displayName)
     val iconsDir = PathManager.getSystemDir().resolve("acp-agents").resolve(".icons")
     Files.createDirectories(iconsDir)
-    val png = loadPng()
-    writeIfChanged(iconsDir.resolve("$slug.png"), png)
-    writeIfChanged(iconsDir.resolve("${slug}_dark.png"), png)
-    LOG.info("AI Chat Claude CLI Native: agent list icon -> $iconsDir/$slug.png")
+    val svg = loadListIconSvg()
+    writeIfChanged(iconsDir.resolve("$slug.svg"), svg)
+    writeIfChanged(iconsDir.resolve("${slug}_dark.svg"), svg)
+    // Older plugin builds wrote PNG; the IDE only loads SVG for custom agents.
+    Files.deleteIfExists(iconsDir.resolve("$slug.png"))
+    Files.deleteIfExists(iconsDir.resolve("${slug}_dark.png"))
+    LOG.info("AI Chat Claude CLI Native: agent list icons -> $iconsDir/$slug.svg")
   }
 
   /** Same rules as [com.intellij.ml.llm.agents.acp.api.AcpAgentId.sanitize]. */
@@ -31,15 +33,15 @@ object AcpAgentIconDeployer {
       .replace(Regex("[^a-z0-9]+"), "-")
       .trim('-')
 
-  private fun loadPng(): ByteArray {
+  private fun loadListIconSvg(): String {
     val stream =
-      AcpAgentIconDeployer::class.java.getResourceAsStream("/icons/claude-acp.png")
-        ?: error("Missing bundled /icons/claude-acp.png")
-    return stream.readBytes()
+      AcpAgentIconDeployer::class.java.getResourceAsStream("/icons/claude-acp-list.svg")
+        ?: error("Missing bundled /icons/claude-acp-list.svg")
+    return stream.bufferedReader().readText()
   }
 
-  private fun writeIfChanged(target: Path, content: ByteArray) {
-    if (Files.isRegularFile(target) && Files.readAllBytes(target).contentEquals(content)) return
-    Files.write(target, content)
+  private fun writeIfChanged(target: Path, content: String) {
+    if (Files.isRegularFile(target) && Files.readString(target) == content) return
+    Files.writeString(target, content)
   }
 }

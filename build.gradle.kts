@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "dev.nowtech"
-version = "1.0.2"
+version = "1.0.6"
 
 kotlin {
   jvmToolchain(21)
@@ -38,7 +38,7 @@ dependencies {
 intellijPlatform {
   pluginConfiguration {
     id = "dev.nowtech.aichat.claudecli.native"
-    name = "Ai Chat Claude CLI Native"
+    name = "AI Chat Claude CLI Native"
     version = project.version.toString()
     ideaVersion {
       sinceBuild = "262.10968"

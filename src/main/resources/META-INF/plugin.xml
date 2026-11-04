@@ -1,14 +1,11 @@
 <idea-plugin>
   <id>dev.nowtech.aichat.claudecli.native</id>
-  <name>Ai Chat Claude CLI Native</name>
+  <name>AI Chat Claude CLI Native</name>
   <vendor url="https://jetbrains.nowtech.dev">NOW Tech</vendor>
   <description><![CDATA[
     Installs the <b>Claude CLI</b> agent for JetBrains <b>AI Chat</b> (ACP), so you can use
     <b>Claude Code Teams</b> with the same <code>claude</code> login as in the terminal — not the
     JetBrains-hosted Claude API key flow.<br/><br/>
-    On startup (optional), the plugin merges <code>~/.jetbrains/acp.json</code>, deploys
-    <code>claude-teams-acp</code> in WSL/Linux, and installs
-    <code>@agentclientprotocol/claude-agent-acp@0.99.0</code> without <code>npx</code>.<br/><br/>
     <a href="https://jetbrains.nowtech.dev"><font color="#589DF6">jetbrains.nowtech.dev</font></a>
   ]]></description>
 
@@ -21,10 +18,10 @@
         parentId="tools"
         instance="dev.nowtech.aichat.claudecli.native.settings.NativeAcpConfigurable"
         id="dev.nowtech.aichat.claudecli.native.settings"
-        displayName="Ai Chat Claude CLI Native"/>
+        displayName="AI Chat Claude CLI Native"/>
     <applicationService
         serviceImplementation="dev.nowtech.aichat.claudecli.native.settings.NativeAcpSettings"/>
-    <notificationGroup id="Ai Chat Claude CLI Native" displayType="BALLOON"/>
+    <notificationGroup id="AI Chat Claude CLI Native" displayType="BALLOON"/>
   </extensions>
 
   <actions>

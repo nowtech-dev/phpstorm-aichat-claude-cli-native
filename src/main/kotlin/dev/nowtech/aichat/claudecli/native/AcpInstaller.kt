@@ -1,12 +1,12 @@
 package dev.nowtech.aichat.claudecli.native
 
 import com.intellij.execution.wsl.WSLDistribution
-import com.intellij.execution.wsl.WslDistributionManager
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationType
 import com.intellij.notification.Notifications
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.diagnostic.logger
+import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.SystemInfo
 import dev.nowtech.aichat.claudecli.native.settings.NativeAcpSettings
 import java.nio.file.Files
@@ -20,13 +20,13 @@ object AcpInstaller {
 
   private val LOG = logger<AcpInstaller>()
 
-  const val INSTALL_REVISION = 3
+  const val INSTALL_REVISION = 4
   const val ACP_PACKAGE = "@agentclientprotocol/claude-agent-acp@0.99.0"
-  const val NOTIFICATION_GROUP = "Ai Chat Claude CLI Native"
+  const val NOTIFICATION_GROUP = "AI Chat Claude CLI Native"
 
-  fun installWithNotification(showSuccess: Boolean = true) {
+  fun installWithNotification(project: Project? = null, showSuccess: Boolean = true) {
     ApplicationManager.getApplication().executeOnPooledThread {
-      val result = runCatching { install() }
+      val result = runCatching { install(project) }
       ApplicationManager.getApplication().invokeLater {
         val settings = NativeAcpSettings.getInstance()
         result.fold(
@@ -49,23 +49,23 @@ object AcpInstaller {
     }
   }
 
-  fun needsInstall(): Boolean {
+  fun needsInstall(project: Project? = null): Boolean {
     val s = NativeAcpSettings.getInstance().state
     if (!s.autoInstallOnStartup) return false
     if (s.installRevision < INSTALL_REVISION) return true
-    return !isRuntimePresent(resolveWslDistributionOrNull())
+    return !isRuntimePresent(WslDistributionResolver.resolveOrNull(project))
   }
 
-  fun install(): String {
+  fun install(project: Project? = null): String {
     return when {
-      SystemInfo.isWindows -> installWindows()
+      SystemInfo.isWindows -> installWindows(project)
       SystemInfo.isLinux || SystemInfo.isMac -> installNativeUnix()
       else -> error("Unsupported OS for ACP install")
     }
   }
 
-  private fun installWindows(): String {
-    val distro = resolveWslDistribution()
+  private fun installWindows(project: Project?): String {
+    val distro = WslDistributionResolver.resolve(project)
     val linuxHome = queryWslHome(distro)
     val winHome = System.getenv("USERPROFILE") ?: error("USERPROFILE not set")
     val acpJson = Paths.get(winHome, ".jetbrains", "acp.json")
@@ -178,20 +178,6 @@ object AcpInstaller {
       AcpInstaller::class.java.getResourceAsStream("/acp/claude-teams-acp.sh")
         ?: error("Missing bundled /acp/claude-teams-acp.sh")
     return stream.bufferedReader().readText()
-  }
-
-  private fun resolveWslDistributionOrNull(): WSLDistribution? =
-    runCatching { resolveWslDistribution() }.getOrNull()
-
-  private fun resolveWslDistribution(): WSLDistribution {
-    val preferred = NativeAcpSettings.getInstance().state.wslDistroId.trim()
-    val installed = WslDistributionManager.getInstance().installedDistributions
-    if (preferred.isNotEmpty()) {
-      installed.firstOrNull { it.msId.equals(preferred, ignoreCase = true) }
-        ?.let { return it }
-    }
-    return installed.firstOrNull()
-      ?: error("No WSL distribution found. Install WSL or set the distro in Settings.")
   }
 
   private fun wslUncHome(distro: WSLDistribution): Path? {

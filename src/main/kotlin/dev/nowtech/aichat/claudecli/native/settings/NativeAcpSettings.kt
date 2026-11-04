@@ -12,7 +12,6 @@ class NativeAcpSettings : PersistentStateComponent<NativeAcpSettings.State> {
   data class State(
     var autoInstallOnStartup: Boolean = true,
     var installRevision: Int = 0,
-    var wslDistroId: String = "",
     var lastInstallError: String = "",
   )
 

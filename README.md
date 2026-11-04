@@ -1,7 +1,7 @@
-# Ai Chat Claude CLI Native
+# AI Chat Claude CLI Native
 
 <p align="center">
-  <img src="docs/icon.png" width="160" alt="Ai Chat Claude CLI Native plugin icon"/>
+  <img src="docs/icon.png" width="160" alt="AI Chat Claude CLI Native plugin icon"/>
 </p>
 
 JetBrains IDE plugin that **installs the Claude CLI agent** for **AI Chat** (ACP), so you can use **Claude Code Teams** with your existing terminal `claude` login — the same way as Cursor/Junie agents, without the JetBrains API-key Claude flow.
@@ -21,7 +21,7 @@ JetBrains IDE plugin that **installs the Claude CLI agent** for **AI Chat** (ACP
 - Merges the **Claude CLI** entry into `~/.jetbrains/acp.json` (other agents are preserved)
 - Deploys `~/.local/bin/claude-teams-acp` and installs `@agentclientprotocol/claude-agent-acp@0.99.0` under `~/.local/share/claude-teams-acp`
 - Does **not** use `npx` (avoids JetBrains temporal npm policy that blocks very new package versions)
-- Drops a **Claude icon** into the IDE’s ACP icon cache so **Claude CLI** in the Agents list is not the generic robot (JetBrains does not support `icon` in `acp.json` yet)
+- Drops **Claude SVG icons** into `{IDE system}/acp-agents/.icons/claude-cli.svg` so **Claude CLI** in the Agents list is not the generic robot (custom agents ignore PNG; JetBrains does not support `icon` in `acp.json` yet)
 - **Windows + WSL projects:** writes Linux paths into `acp.json` so AI Chat starts the agent inside WSL (Eel), not via `wsl.exe` from Linux
 
 After install: **AI Chat → Agents → Claude CLI** → new chat.
@@ -31,7 +31,7 @@ If the agent misbehaves after an upgrade: **AI Chat → Clear Downloaded Agent F
 ## Features
 
 - Auto install/repair on first startup (default **on**)
-- **Settings → Tools → Ai Chat Claude CLI Native** — WSL distro id, manual install, last error
+- **Settings → Tools → AI Chat Claude CLI Native** — auto-install toggle, manual install/repair, last error
 - **Tools → Install Claude CLI for AI Chat…**
 
 ## Build
