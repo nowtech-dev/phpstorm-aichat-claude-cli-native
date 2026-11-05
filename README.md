@@ -93,6 +93,10 @@ test -x ~/.local/bin/claude-teams-acp && test -f ~/.local/share/claude-teams-acp
 
 Uses JetBrains platform and AI Assistant APIs. May require updates when the IDE or ACP agent packaging changes. Not affiliated with JetBrains or Anthropic.
 
+## Support
+
+If this plugin saves you time, consider a [donation](https://donate.stripe.com/test_dRm8wObyog0J83pgdZcjS00).
+
 ## License
 
 [MIT](LICENSE) © [NOW Tech](https://phpstorm.nowtech.dev)
